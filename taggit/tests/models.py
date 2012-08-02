@@ -122,12 +122,10 @@ class ArticleTag(Tag):
     class Meta:
         proxy = True
 
-    def slugify(self, tag, i=None):
-        slug = "category-%s" % tag.lower()
+    @classmethod
+    def slugify(klass, tag):
+        return "category-%s" % tag.lower()
 
-        if i is not None:
-            slug += "-%d" % i
-        return slug
 
 class ArticleTaggedItem(TaggedItem):
     class Meta:

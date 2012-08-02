@@ -37,25 +37,23 @@ class TagBase(models.Model):
                 trans_kwargs = {"using": using}
             else:
                 trans_kwargs = {}
-            i = 0
-            while True:
-                i += 1
-                try:
-                    sid = transaction.savepoint(**trans_kwargs)
-                    res = super(TagBase, self).save(*args, **kwargs)
-                    transaction.savepoint_commit(sid, **trans_kwargs)
-                    return res
-                except DBError:
-                    transaction.savepoint_rollback(sid, **trans_kwargs)
-                    self.slug = self.slugify(self.name, i)
+            try:
+                sid = transaction.savepoint(**trans_kwargs)
+                res = super(TagBase, self).save(*args, **kwargs)
+                transaction.savepoint_commit(sid, **trans_kwargs)
+                return res
+            except DBError:
+                transaction.savepoint_rollback(sid, **trans_kwargs)
+                # Ignore inserting a new tag if slug is not unique.
+                # Ideally, this should have been dealt with already
+                # on the manager methods (add, set, etc.)
+                return None
         else:
             return super(TagBase, self).save(*args, **kwargs)
 
-    def slugify(self, tag, i=None):
-        slug = default_slugify(tag)
-        if i is not None:
-            slug += "_%d" % i
-        return slug
+    @classmethod
+    def slugify(klass, tag):
+        return default_slugify(tag)
 
 
 class Tag(TagBase):

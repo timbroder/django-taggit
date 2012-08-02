@@ -109,7 +109,7 @@ class TaggableManager(RelatedField):
 
     def m2m_reverse_name(self):
         return self.through._meta.get_field_by_name("tag")[0].column
-    
+
     def m2m_reverse_field_name(self):
         return self.through._meta.get_field_by_name("tag")[0].name
 
@@ -155,26 +155,38 @@ class _TaggableManager(models.Manager):
     def _lookup_kwargs(self):
         return self.through.lookup_kwargs(self.instance)
 
+    def _tag_model(self):
+        return self.through.tag_model()
+
+    def _slugify(self, slug):
+        return self._tag_model().slugify(slug)
+
     @require_instance_manager
     def add(self, *tags):
-        str_tags = set([
-            t
-            for t in tags
-            if not isinstance(t, self.through.tag_model())
+        tag_objs = set([
+            t for t in tags if isinstance(t, self._tag_model())
         ])
-        tag_objs = set(tags) - str_tags
+        str_tags = dict([
+            (self._slugify(t), t) for t in (set(tags) - tag_objs)
+        ])
         # If str_tags has 0 elements Django actually optimizes that to not do a
         # query.  Malcolm is very smart.
         existing = self.through.tag_model().objects.filter(
-            name__in=str_tags
+            slug__in=str_tags.keys()
         )
         tag_objs.update(existing)
+        new_tags = set([
+            v for k, v in str_tags.items()
+            if k not in set(t.slug for t in existing)
+        ])
 
-        for new_tag in str_tags - set(t.name for t in existing):
-            tag_objs.add(self.through.tag_model().objects.create(name=new_tag))
+        for new_tag in new_tags:
+            tag_objs.add(self.through.tag_model().objects.create(
+                name=new_tag))
 
         for tag in tag_objs:
-            self.through.objects.get_or_create(tag=tag, **self._lookup_kwargs())
+            self.through.objects.get_or_create(
+                tag=tag, **self._lookup_kwargs())
 
     @require_instance_manager
     def set(self, *tags):
