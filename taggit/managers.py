@@ -27,9 +27,9 @@ except NameError:
 
 
 class TaggableRel(ManyToManyRel):
-    def __init__(self, related_name=None):
+    def __init__(self, related_name=None, limit_choices_to=None):
         self.related_name = related_name
-        self.limit_choices_to = {}
+        self.limit_choices_to = limit_choices_to or {}
         self.symmetrical = True
         self.multiple = True
         self.through = None
@@ -37,9 +37,10 @@ class TaggableRel(ManyToManyRel):
 
 class TaggableManager(RelatedField):
     def __init__(self, verbose_name=_("Tags"),
-        help_text=_("A comma-separated list of tags."), through=None, blank=False, related_name=None):
+        help_text=_("A comma-separated list of tags."), through=None, blank=False, related_name=None,
+        limit_choices_to=None):
         self.through = through or TaggedItem
-        self.rel = TaggableRel(related_name)
+        self.rel = TaggableRel(related_name, limit_choices_to)
         self.verbose_name = verbose_name
         self.help_text = help_text
         self.blank = blank
