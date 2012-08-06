@@ -158,8 +158,11 @@ class _TaggableManager(models.Manager):
 
     def _through(self):
         through = self.through
-        if through._meta.proxy:
-            through = through._meta.parents.keys()[-1]
+        while through._meta.proxy:
+            try:
+                through = through._meta.parents.keys()[-1]
+            except IndexError:
+                raise Exception("Couldn't find a suitable class for %s.through" % self)
         return through
 
     def _tag_model(self):
