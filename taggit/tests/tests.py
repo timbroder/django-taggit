@@ -142,17 +142,15 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
 
     def test_add_queries(self):
         apple = self.food_model.objects.create(name="apple")
-        #   1 query to see which tags exist
-        # + 3 queries to create the tags.
-        # + 6 queries to create the intermediary things (including SELECTs, to
-        #     make sure we don't double create.
-        self.assert_num_queries(10, apple.tags.add, "red", "delicious", "green")
+        #   1 query to select existing tags
+        # + 3 queries to create the tags
+        # + 1 query to relate to model instance
+        self.assert_num_queries(5, apple.tags.add, "red", "delicious", "green")
 
         pear = self.food_model.objects.create(name="pear")
-        #   1 query to see which tags exist
-        # + 4 queries to create the intermeidary things (including SELECTs, to
-        #   make sure we dont't double create.
-        self.assert_num_queries(5, pear.tags.add, "green", "delicious")
+        #   1 query to select existing tags
+        # + 1 query to related to model instance
+        self.assert_num_queries(2, pear.tags.add, "green", "delicious")
 
         self.assert_num_queries(0, pear.tags.add)
 

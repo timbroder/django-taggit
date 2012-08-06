@@ -156,6 +156,12 @@ class _TaggableManager(models.Manager):
     def _lookup_kwargs(self):
         return self.through.lookup_kwargs(self.instance)
 
+    def _through(self):
+        through = self.through
+        if through._meta.proxy:
+            through = through._meta.parents.keys()[-1]
+        return through
+
     def _tag_model(self):
         return self.through.tag_model()
 
@@ -164,15 +170,18 @@ class _TaggableManager(models.Manager):
 
     @require_instance_manager
     def add(self, *tags):
+        through_model = self._through()
+        tag_model = self._tag_model()
+
         tag_objs = set([
-            t for t in tags if isinstance(t, self._tag_model())
+            t for t in tags if isinstance(t, tag_model)
         ])
         str_tags = dict([
             (self._slugify(t), t) for t in (set(tags) - tag_objs)
         ])
         # If str_tags has 0 elements Django actually optimizes that to not do a
         # query.  Malcolm is very smart.
-        existing = self.through.tag_model().objects.filter(
+        existing = tag_model.objects.filter(
             slug__in=str_tags.keys()
         )
         tag_objs.update(existing)
@@ -182,12 +191,14 @@ class _TaggableManager(models.Manager):
         ])
 
         for new_tag in new_tags:
-            tag_objs.add(self.through.tag_model().objects.create(
-                name=new_tag))
+            tag_objs.add(
+                tag_model.objects.create(name=new_tag)
+            )
 
-        for tag in tag_objs:
-            self.through.objects.get_or_create(
-                tag=tag, **self._lookup_kwargs())
+        through_model.objects.bulk_create([
+            through_model(tag=tag, **self._lookup_kwargs())
+            for tag in tag_objs
+        ])
 
     @require_instance_manager
     def set(self, *tags):
