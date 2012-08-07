@@ -64,14 +64,24 @@ class Tag(TagBase):
 
 
 class ItemBase(models.Model):
+    class Meta:
+        abstract = True
+
     def __unicode__(self):
         return ugettext("%(object)s tagged with %(tag)s") % {
             "object": self.content_object,
             "tag": self.tag
         }
 
-    class Meta:
-        abstract = True
+    @classmethod
+    def tags_for(cls, model, instance=None):
+        if instance is not None:
+            return cls.tag_model().objects.filter(**{
+                '%s__content_object' % cls.tag_relname(): instance
+            })
+        return cls.tag_model().objects.filter(**{
+            '%s__content_object__isnull' % cls.tag_relname(): False
+        }).distinct()
 
     @classmethod
     def tag_model(cls):
@@ -102,16 +112,6 @@ class TaggedItemBase(ItemBase):
 
     class Meta:
         abstract = True
-
-    @classmethod
-    def tags_for(cls, model, instance=None):
-        if instance is not None:
-            return cls.tag_model().objects.filter(**{
-                '%s__content_object' % cls.tag_relname(): instance
-            })
-        return cls.tag_model().objects.filter(**{
-            '%s__content_object__isnull' % cls.tag_relname(): False
-        }).distinct()
 
 
 class GenericTaggedItemBase(ItemBase):
